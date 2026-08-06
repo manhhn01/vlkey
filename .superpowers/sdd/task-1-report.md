@@ -107,3 +107,21 @@ Result: **BUILD SUCCESSFUL** — 9/9 tests passed.
 ./gradlew :app:testDebugUnitTest
 BUILD SUCCESSFUL — TelexEngineTest: 9 tests, 0 failures
 ```
+
+## Review fix: restore `.worktrees/` in `.gitignore`
+
+**Finding:** Important — `.gitignore` had Android build ignores only; `.worktrees/` was dropped when Android entries were added.
+
+**Fix:** Prepended `.worktrees/` to `.gitignore` while keeping all Android build output ignores (including `/app/build/`).
+
+**Commit:** `d53920f` — fix: restore .worktrees/ in .gitignore alongside Android ignores
+
+**Check output:**
+
+```
+$ test -f .gitignore && grep -n worktrees .gitignore
+1:.worktrees/
+
+$ grep -n 'app/build' .gitignore
+14:/app/build/
+```
