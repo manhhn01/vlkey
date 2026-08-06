@@ -1,7 +1,0 @@
-com.ime.vnkeyboard.app-pngs-0 /home/mark/Documents/Code/ime/.worktrees/vn-telex-hw/app/build/generated/res/pngs/debug
-com.ime.vnkeyboard.app-resValues-1 /home/mark/Documents/Code/ime/.worktrees/vn-telex-hw/app/build/generated/res/resValues/debug
-com.ime.vnkeyboard.app-packageDebugResources-2 /home/mark/Documents/Code/ime/.worktrees/vn-telex-hw/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
-com.ime.vnkeyboard.app-packageDebugResources-3 /home/mark/Documents/Code/ime/.worktrees/vn-telex-hw/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
-com.ime.vnkeyboard.app-debug-4 /home/mark/Documents/Code/ime/.worktrees/vn-telex-hw/app/build/intermediates/merged_res/debug/mergeDebugResources
-com.ime.vnkeyboard.app-debug-5 /home/mark/Documents/Code/ime/.worktrees/vn-telex-hw/app/src/debug/res
-com.ime.vnkeyboard.app-main-6 /home/mark/Documents/Code/ime/.worktrees/vn-telex-hw/app/src/main/res
