@@ -1,0 +1,2 @@
+com.ime.vnkeyboard:string/ime_name = 0x7f010001
+com.ime.vnkeyboard:string/app_name = 0x7f010000
