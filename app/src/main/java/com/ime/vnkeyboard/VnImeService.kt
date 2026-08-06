@@ -10,7 +10,7 @@ class VnImeService : InputMethodService() {
     private val commitManager = CommitManager(buffer)
     private val pipeline = InputPipeline(buffer, commitManager)
     private var suppressSelectionClear = false
-    private var lastConsumedKeyCode: Int? = null
+    private val consumedKeyCodes = ConsumedKeyCodes()
 
     override fun onCreateInputView(): View {
         return View(this)
@@ -82,7 +82,7 @@ class VnImeService : InputMethodService() {
                 }
                 val consumed = handled || committer == null
                 if (consumed) {
-                    lastConsumedKeyCode = keyCode
+                    consumedKeyCodes.add(keyCode)
                 }
                 return consumed
             }
@@ -90,8 +90,7 @@ class VnImeService : InputMethodService() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == lastConsumedKeyCode) {
-            lastConsumedKeyCode = null
+        if (consumedKeyCodes.remove(keyCode)) {
             return true
         }
         return super.onKeyUp(keyCode, event)

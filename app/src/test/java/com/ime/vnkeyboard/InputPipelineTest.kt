@@ -18,7 +18,10 @@ class InputPipelineTest {
             assertTrue(p.onLetter(fake, ch))
         }
         assertEquals("chaof", buffer.raw)
-        assertEquals("chào", fake.ops.last().removePrefix("commit:").substringBefore(":"))
+        assertEquals(
+            "chào",
+            fake.ops.last { it.startsWith("commit:") }.removePrefix("commit:").substringBefore(":"),
+        )
         assertEquals(4, buffer.committedLength)
     }
 
@@ -28,7 +31,7 @@ class InputPipelineTest {
         for (ch in "chaof") p.onLetter(fake, ch)
         fake.ops.clear()
         assertTrue(p.onTerminator(fake, ' '))
-        assertEquals(listOf("commit: :1"), fake.ops)
+        assertEquals(listOf("begin", "commit: :1", "end"), fake.ops)
         assertTrue(buffer.isEmpty)
     }
 
@@ -39,13 +42,13 @@ class InputPipelineTest {
         fake.ops.clear()
         assertTrue(p.onBackspace(fake))
         assertEquals("chao", buffer.raw)
-        assertEquals("commit:chao:1", fake.ops.last())
+        assertEquals("commit:chao:1", fake.ops.last { it.startsWith("commit:") })
     }
 
     @Test
     fun backspace_empty_deletes_one() {
         val (p, fake, _) = newPipeline()
         assertTrue(p.onBackspace(fake))
-        assertEquals(listOf("del:1:0"), fake.ops)
+        assertEquals(listOf("begin", "del:1:0", "end"), fake.ops)
     }
 }

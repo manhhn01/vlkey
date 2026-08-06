@@ -6,19 +6,24 @@ class CommitManager(private val buffer: WordBuffer) {
             buffer.clear()
             return false
         }
-        val before = buffer.committedLength
-        if (before > 0 && !committer.deleteSurroundingText(before, 0)) {
-            buffer.clear()
-            return false
-        }
-        if (converted.isNotEmpty()) {
-            if (!committer.commitText(converted, 1)) {
+        committer.beginBatchEdit()
+        return try {
+            val before = buffer.committedLength
+            if (before > 0 && !committer.deleteSurroundingText(before, 0)) {
                 buffer.clear()
                 return false
             }
+            if (converted.isNotEmpty()) {
+                if (!committer.commitText(converted, 1)) {
+                    buffer.clear()
+                    return false
+                }
+            }
+            buffer.committedLength = converted.length
+            true
+        } finally {
+            committer.endBatchEdit()
         }
-        buffer.committedLength = converted.length
-        return true
     }
 
     fun commitRaw(committer: TextCommitter?, text: String): Boolean {
@@ -26,12 +31,17 @@ class CommitManager(private val buffer: WordBuffer) {
             buffer.clear()
             return false
         }
-        if (!committer.commitText(text, 1)) {
+        committer.beginBatchEdit()
+        return try {
+            if (!committer.commitText(text, 1)) {
+                buffer.clear()
+                return false
+            }
             buffer.clear()
-            return false
+            true
+        } finally {
+            committer.endBatchEdit()
         }
-        buffer.clear()
-        return true
     }
 
     fun deleteOne(committer: TextCommitter?): Boolean {
@@ -39,11 +49,16 @@ class CommitManager(private val buffer: WordBuffer) {
             buffer.clear()
             return false
         }
-        if (!committer.deleteSurroundingText(1, 0)) {
+        committer.beginBatchEdit()
+        return try {
+            if (!committer.deleteSurroundingText(1, 0)) {
+                buffer.clear()
+                return false
+            }
             buffer.clear()
-            return false
+            true
+        } finally {
+            committer.endBatchEdit()
         }
-        buffer.clear()
-        return true
     }
 }
