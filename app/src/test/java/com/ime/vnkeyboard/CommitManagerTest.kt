@@ -69,6 +69,18 @@ class CommitManagerTest {
     }
 
     @Test
+    fun replaceWord_empty_only_deletes() {
+        val buffer = WordBuffer()
+        buffer.append('a')
+        buffer.committedLength = 1
+        val fake = FakeCommitter()
+        val cm = CommitManager(buffer)
+        assertTrue(cm.replaceWord(fake, ""))
+        assertEquals(listOf("del:1:0"), fake.ops)
+        assertEquals(0, buffer.committedLength)
+    }
+
+    @Test
     fun deleteOne_when_empty_buffer() {
         val buffer = WordBuffer()
         val fake = FakeCommitter()

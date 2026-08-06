@@ -11,9 +11,11 @@ class CommitManager(private val buffer: WordBuffer) {
             buffer.clear()
             return false
         }
-        if (!committer.commitText(converted, 1)) {
-            buffer.clear()
-            return false
+        if (converted.isNotEmpty()) {
+            if (!committer.commitText(converted, 1)) {
+                buffer.clear()
+                return false
+            }
         }
         buffer.committedLength = converted.length
         return true
