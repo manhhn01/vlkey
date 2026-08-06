@@ -27,4 +27,22 @@ class SelectionEchoGuardTest {
         assertEquals(0, result.first)
         assertTrue(result.second)
     }
+
+    @Test
+    fun self_edit_count_is_capped() {
+        var count = 0
+        repeat(20) {
+            count = SelectionEchoGuard.onSelfEdit(count)
+        }
+
+        assertEquals(8, count)
+    }
+
+    @Test
+    fun expanded_selection_always_clears_pending_echoes() {
+        val result = SelectionEchoGuard.onSelection(3, isCollapsed = false)
+
+        assertEquals(0, result.first)
+        assertTrue(result.second)
+    }
 }

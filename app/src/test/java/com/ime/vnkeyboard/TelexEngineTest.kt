@@ -58,4 +58,23 @@ class TelexEngineTest {
     fun prefer_marked_vowel_for_tone() {
         assertEquals("ấ", TelexEngine.convert("aas"))
     }
+
+    @Test
+    fun tone_placement_for_oi() {
+        assertEquals("nói", TelexEngine.convert("nois"))
+        assertEquals("hỏi", TelexEngine.convert("hoir"))
+        assertEquals("mọi", TelexEngine.convert("moij"))
+    }
+
+    @Test
+    fun qu_and_gi_are_initial_consonant_clusters() {
+        assertEquals("quán", TelexEngine.convert("quans"))
+        assertEquals("giá", TelexEngine.convert("gias"))
+    }
+
+    @Test
+    fun tone_goes_on_middle_vowel_of_three_vowel_cluster() {
+        assertEquals("ngoài", TelexEngine.convert("ngoaif"))
+        assertEquals("loại", TelexEngine.convert("loaji"))
+    }
 }

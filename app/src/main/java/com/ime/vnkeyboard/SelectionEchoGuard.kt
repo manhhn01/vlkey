@@ -1,9 +1,12 @@
 package com.ime.vnkeyboard
 
 object SelectionEchoGuard {
-    fun onSelfEdit(count: Int): Int = count + 1
+    private const val MAX_PENDING_ECHOES = 8
 
-    fun onSelection(count: Int): Pair<Int, Boolean> {
+    fun onSelfEdit(count: Int): Int = (count + 1).coerceAtMost(MAX_PENDING_ECHOES)
+
+    fun onSelection(count: Int, isCollapsed: Boolean = true): Pair<Int, Boolean> {
+        if (!isCollapsed) return 0 to true
         return if (count > 0) {
             (count - 1) to false
         } else {

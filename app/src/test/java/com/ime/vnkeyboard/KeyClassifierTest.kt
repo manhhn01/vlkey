@@ -34,6 +34,14 @@ class KeyClassifierTest {
     }
 
     @Test
+    fun enter_and_tab_are_platform_keys() {
+        assertEquals(KeyAction.PlatformKey, KeyClassifier.classify(DOWN, 66, '\n'.code, 0))
+        assertEquals(KeyAction.PlatformKey, KeyClassifier.classify(DOWN, 61, '\t'.code, 0))
+        assertEquals(KeyAction.PlatformKey, KeyClassifier.classify(DOWN, 66, 0, 0))
+        assertEquals(KeyAction.PlatformKey, KeyClassifier.classify(DOWN, 61, 0, 0))
+    }
+
+    @Test
     fun digit_passthrough() {
         assertEquals(KeyAction.PassThrough('1'), KeyClassifier.classify(DOWN, 8, '1'.code, 0))
     }

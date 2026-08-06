@@ -46,7 +46,10 @@ class VnImeService : InputMethodService() {
             candidatesStart,
             candidatesEnd,
         )
-        val (newCount, shouldClear) = SelectionEchoGuard.onSelection(suppressSelectionCount)
+        val (newCount, shouldClear) = SelectionEchoGuard.onSelection(
+            suppressSelectionCount,
+            isCollapsed = newSelStart == newSelEnd,
+        )
         suppressSelectionCount = newCount
         if (shouldClear) {
             pipeline.clear()
@@ -66,8 +69,18 @@ class VnImeService : InputMethodService() {
                 pipeline.clear()
                 return false
             }
+            is KeyAction.PlatformKey -> {
+                pipeline.clear()
+                suppressSelectionCount = 0
+                return false
+            }
             else -> {
                 val committer = currentInputConnection?.let(::InputConnectionCommitter)
+                if (committer == null) {
+                    pipeline.clear()
+                    suppressSelectionCount = 0
+                    return false
+                }
                 val handled = when (action) {
                     is KeyAction.Letter -> pipeline.onLetter(committer, action.char)
                     is KeyAction.Backspace -> pipeline.onBackspace(committer)
@@ -75,15 +88,14 @@ class VnImeService : InputMethodService() {
                     is KeyAction.PassThrough -> pipeline.onPassThrough(committer, action.char)
                     else -> false
                 }
-                if (handled && committer != null) {
+                if (handled) {
                     suppressSelectionCount =
                         SelectionEchoGuard.onSelfEdit(suppressSelectionCount)
                 }
-                val consumed = handled || committer == null
-                if (consumed && event.repeatCount == 0) {
+                if (event.repeatCount == 0) {
                     consumedKeyCodes.add(keyCode)
                 }
-                return consumed
+                return true
             }
         }
     }

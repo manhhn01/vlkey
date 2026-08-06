@@ -47,6 +47,15 @@ object TelexEngine {
         }
     }
 
+    private val toneKeyByVowel: Map<Char, Char> = buildMap {
+        for ((toneKey, tone) in toneMap) {
+            for (accented in tone.values) {
+                put(accented, toneKey)
+                put(accented.uppercaseChar(), toneKey)
+            }
+        }
+    }
+
     fun convert(raw: String): String {
         if (raw.isEmpty()) return ""
         val out = StringBuilder()
@@ -60,9 +69,20 @@ object TelexEngine {
             }
             if (!applyDiacriticKey(out, ch)) {
                 out.append(ch)
+                if (ch in baseVowels) {
+                    repositionExistingTone(out)
+                }
             }
         }
         return out.toString()
+    }
+
+    private fun repositionExistingTone(out: StringBuilder) {
+        val tonedIndex = out.indices.firstOrNull { out[it] in toneKeyByVowel } ?: return
+        val toned = out[tonedIndex]
+        val toneKey = toneKeyByVowel.getValue(toned)
+        out.setCharAt(tonedIndex, stripTone.getValue(toned))
+        applyToneKey(out, toneKey)
     }
 
     private fun applyDiacriticKey(out: StringBuilder, ch: Char): Boolean {
@@ -108,18 +128,12 @@ object TelexEngine {
 
     private val diphthongToneOnFirst = setOf(
         "oa", "oe", "uy",
-        "ai", "ao", "au", "ay", "eo", "ia", "iu",
+        "ai", "ao", "au", "ay", "eo", "ia", "iu", "oi",
         "ua", "ue", "ui", "uo", "uu",
         "ya", "ye", "yi", "yo", "yu",
     )
 
     private fun findToneTargetIndex(out: StringBuilder): Int? {
-        for (i in out.indices.reversed()) {
-            val c = out[i]
-            val base = (stripTone[c] ?: c).lowercaseChar()
-            if (markedVowels.any { it.lowercaseChar() == base }) return i
-        }
-
         val vowelIndices = mutableListOf<Int>()
         for (i in out.indices) {
             val c = out[i]
@@ -128,8 +142,22 @@ object TelexEngine {
                 vowelIndices.add(i)
             }
         }
+        if (out.length >= 2) {
+            val initial = "${out[0].lowercaseChar()}${out[1].lowercaseChar()}"
+            if (initial == "qu" || initial == "gi") {
+                vowelIndices.remove(1)
+            }
+        }
         if (vowelIndices.isEmpty()) return null
+
+        for (i in vowelIndices.reversed()) {
+            val c = out[i]
+            val base = (stripTone[c] ?: c).lowercaseChar()
+            if (markedVowels.any { it.lowercaseChar() == base }) return i
+        }
+
         if (vowelIndices.size == 1) return vowelIndices[0]
+        if (vowelIndices.size >= 3) return vowelIndices[vowelIndices.size / 2]
 
         for (j in 0 until vowelIndices.size - 1) {
             val v1 = (stripTone[out[vowelIndices[j]]] ?: out[vowelIndices[j]]).lowercaseChar()
