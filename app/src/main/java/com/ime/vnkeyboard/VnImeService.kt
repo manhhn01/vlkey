@@ -10,6 +10,7 @@ class VnImeService : InputMethodService() {
     private val commitManager = CommitManager(buffer)
     private val pipeline = InputPipeline(buffer, commitManager)
     private var suppressSelectionClear = false
+    private var lastConsumedKeyCode: Int? = null
 
     override fun onCreateInputView(): View {
         return View(this)
@@ -41,7 +42,9 @@ class VnImeService : InputMethodService() {
             candidatesStart,
             candidatesEnd,
         )
-        if (!suppressSelectionClear) {
+        if (suppressSelectionClear) {
+            suppressSelectionClear = false
+        } else {
             pipeline.clear()
         }
     }
@@ -62,36 +65,35 @@ class VnImeService : InputMethodService() {
             else -> {
                 val committer = currentInputConnection?.let(::InputConnectionCommitter)
                 suppressSelectionClear = true
-                try {
-                    val handled = when (action) {
+                val handled = try {
+                    when (action) {
                         is KeyAction.Letter -> pipeline.onLetter(committer, action.char)
                         is KeyAction.Backspace -> pipeline.onBackspace(committer)
                         is KeyAction.Terminator -> pipeline.onTerminator(committer, action.char)
                         is KeyAction.PassThrough -> pipeline.onPassThrough(committer, action.char)
                         else -> false
                     }
-                    return handled || committer == null
-                } finally {
+                } catch (error: Throwable) {
+                    suppressSelectionClear = false
+                    throw error
+                }
+                if (!handled || committer == null) {
                     suppressSelectionClear = false
                 }
+                val consumed = handled || committer == null
+                if (consumed) {
+                    lastConsumedKeyCode = keyCode
+                }
+                return consumed
             }
         }
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        val action = KeyClassifier.classify(
-            KeyEvent.ACTION_DOWN,
-            event.keyCode,
-            event.unicodeChar,
-            event.metaState,
-        )
-        return when (action) {
-            is KeyAction.Letter,
-            is KeyAction.Backspace,
-            is KeyAction.Terminator,
-            is KeyAction.PassThrough,
-            -> true
-            else -> super.onKeyUp(keyCode, event)
+        if (keyCode == lastConsumedKeyCode) {
+            lastConsumedKeyCode = null
+            return true
         }
+        return super.onKeyUp(keyCode, event)
     }
 }

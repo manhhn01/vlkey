@@ -28,6 +28,6 @@ object KeyClassifier {
         val char = unicodeChar.toChar()
         if (char in terminators) return KeyAction.Terminator(char)
         if (char.isLetter() && char.code < 128) return KeyAction.Letter(char)
-        return KeyAction.PassThrough(char)
+        return if (char.isISOControl()) KeyAction.Ignore else KeyAction.PassThrough(char)
     }
 }

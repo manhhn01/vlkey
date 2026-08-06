@@ -39,6 +39,11 @@ class KeyClassifierTest {
     }
 
     @Test
+    fun non_printable_control_ignored() {
+        assertEquals(KeyAction.Ignore, KeyClassifier.classify(DOWN, 0, '\u0001'.code, 0))
+    }
+
+    @Test
     fun action_up_ignored() {
         assertTrue(KeyClassifier.classify(1, 29, 'a'.code, 0) is KeyAction.Ignore)
     }
