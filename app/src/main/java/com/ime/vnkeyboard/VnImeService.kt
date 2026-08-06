@@ -9,7 +9,7 @@ class VnImeService : InputMethodService() {
     private val buffer = WordBuffer()
     private val commitManager = CommitManager(buffer)
     private val pipeline = InputPipeline(buffer, commitManager)
-    private var suppressSelectionClear = false
+    private var suppressSelectionCount = 0
     private val consumedKeyCodes = ConsumedKeyCodes()
 
     override fun onCreateInputView(): View {
@@ -19,10 +19,14 @@ class VnImeService : InputMethodService() {
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         pipeline.clear()
+        suppressSelectionCount = 0
+        consumedKeyCodes.clear()
     }
 
     override fun onFinishInput() {
         pipeline.clear()
+        suppressSelectionCount = 0
+        consumedKeyCodes.clear()
         super.onFinishInput()
     }
 
@@ -42,9 +46,9 @@ class VnImeService : InputMethodService() {
             candidatesStart,
             candidatesEnd,
         )
-        if (suppressSelectionClear) {
-            suppressSelectionClear = false
-        } else {
+        val (newCount, shouldClear) = SelectionEchoGuard.onSelection(suppressSelectionCount)
+        suppressSelectionCount = newCount
+        if (shouldClear) {
             pipeline.clear()
         }
     }
@@ -64,24 +68,19 @@ class VnImeService : InputMethodService() {
             }
             else -> {
                 val committer = currentInputConnection?.let(::InputConnectionCommitter)
-                suppressSelectionClear = true
-                val handled = try {
-                    when (action) {
-                        is KeyAction.Letter -> pipeline.onLetter(committer, action.char)
-                        is KeyAction.Backspace -> pipeline.onBackspace(committer)
-                        is KeyAction.Terminator -> pipeline.onTerminator(committer, action.char)
-                        is KeyAction.PassThrough -> pipeline.onPassThrough(committer, action.char)
-                        else -> false
-                    }
-                } catch (error: Throwable) {
-                    suppressSelectionClear = false
-                    throw error
+                val handled = when (action) {
+                    is KeyAction.Letter -> pipeline.onLetter(committer, action.char)
+                    is KeyAction.Backspace -> pipeline.onBackspace(committer)
+                    is KeyAction.Terminator -> pipeline.onTerminator(committer, action.char)
+                    is KeyAction.PassThrough -> pipeline.onPassThrough(committer, action.char)
+                    else -> false
                 }
-                if (!handled || committer == null) {
-                    suppressSelectionClear = false
+                if (handled && committer != null) {
+                    suppressSelectionCount =
+                        SelectionEchoGuard.onSelfEdit(suppressSelectionCount)
                 }
                 val consumed = handled || committer == null
-                if (consumed) {
+                if (consumed && event.repeatCount == 0) {
                     consumedKeyCodes.add(keyCode)
                 }
                 return consumed

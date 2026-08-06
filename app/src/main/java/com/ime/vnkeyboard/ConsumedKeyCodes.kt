@@ -16,4 +16,8 @@ class ConsumedKeyCodes {
         }
         return true
     }
+
+    fun clear() {
+        counts.clear()
+    }
 }

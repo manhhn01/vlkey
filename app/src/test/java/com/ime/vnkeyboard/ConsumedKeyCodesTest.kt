@@ -28,4 +28,16 @@ class ConsumedKeyCodesTest {
         assertTrue(keys.remove(29))
         assertFalse(keys.remove(29))
     }
+
+    @Test
+    fun clear_discards_all_consumed_key_downs() {
+        val keys = ConsumedKeyCodes()
+        keys.add(29)
+        keys.add(30)
+
+        keys.clear()
+
+        assertFalse(keys.remove(29))
+        assertFalse(keys.remove(30))
+    }
 }
