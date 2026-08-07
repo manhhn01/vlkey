@@ -60,21 +60,83 @@ object TelexEngine {
         if (raw.isEmpty()) return ""
         val out = StringBuilder()
         for (ch in raw) {
-            val lower = ch.lowercaseChar()
-            if (lower in toneKeys) {
-                if (!applyToneKey(out, lower)) {
-                    out.append(ch)
-                }
-                continue
-            }
-            if (!applyDiacriticKey(out, ch)) {
-                out.append(ch)
-                if (ch in baseVowels) {
-                    repositionExistingTone(out)
-                }
-            }
+            applyKey(out, ch)
         }
         return out.toString()
+    }
+
+    /** Intermediate forms after each key — for tests/debugging. */
+    fun convertSteps(raw: String): List<String> {
+        val out = StringBuilder()
+        val steps = mutableListOf<String>()
+        for (ch in raw) {
+            applyKey(out, ch)
+            steps += out.toString()
+        }
+        return steps
+    }
+
+    private fun applyKey(out: StringBuilder, ch: Char) {
+        val lower = ch.lowercaseChar()
+        if (lower in toneKeys) {
+            if (!applyToneKey(out, lower)) {
+                out.append(ch)
+            }
+            promoteIeYeCircumflex(out)
+            return
+        }
+        if (!applyDiacriticKey(out, ch)) {
+            out.append(ch)
+            if (isVowelChar(ch)) {
+                repositionExistingTone(out)
+            }
+        }
+        promoteIeYeCircumflex(out)
+    }
+
+    private fun isVowelChar(ch: Char): Boolean {
+        val base = stripTone[ch] ?: ch
+        return base in baseVowels || stripTone.containsKey(ch)
+    }
+
+    private val ieYeFinalSingles = setOf('c', 't', 'n', 'p', 'm')
+    private val ieYeFinalDigraphs = setOf("ch", "nh", "ng")
+
+    /**
+     * Vietnamese rhyme rule: ie/ye + final (c/t/n/p/m/ch/nh/ng) ⇒ iê/yê.
+     * So `vietj` → `việt`, `tiengs` → `tiếng`.
+     */
+    private fun promoteIeYeCircumflex(out: StringBuilder) {
+        if (out.length < 3) return
+        for (i in 0 until out.length - 1) {
+            val lead = (stripTone[out[i]] ?: out[i]).lowercaseChar()
+            if (lead != 'i' && lead != 'y') continue
+            val eChar = out[i + 1]
+            val eBase = (stripTone[eChar] ?: eChar).lowercaseChar()
+            if (eBase != 'e' && eBase != 'ê') continue
+            if (eBase == 'ê') continue
+            val rest = buildString {
+                for (j in i + 2 until out.length) {
+                    append((stripTone[out[j]] ?: out[j]).lowercaseChar())
+                }
+            }
+            if (!isIeYeFinal(rest)) continue
+            val tone = toneKeyByVowel[eChar]
+            val upper = eChar.isUpperCase() || (stripTone[eChar] ?: eChar).isUpperCase()
+            var promoted: Char = if (upper) 'Ê' else 'ê'
+            if (tone != null) {
+                val toned = toneMap[tone]?.get(promoted.lowercaseChar()) ?: promoted
+                promoted = if (upper) toned.uppercaseChar() else toned
+            }
+            out.setCharAt(i + 1, promoted)
+        }
+    }
+
+    private fun isIeYeFinal(rest: String): Boolean {
+        if (rest.isEmpty()) return false
+        if (rest in ieYeFinalDigraphs) return true
+        if (rest.length == 1 && rest[0] in ieYeFinalSingles) return true
+        return false
     }
 
     /** Rebuild Telex keystrokes that convert back to [vietnamese] (for character-wise backspace). */
@@ -113,24 +175,27 @@ object TelexEngine {
         if (out.isEmpty()) return false
         val keyLower = ch.lowercaseChar()
 
-        // uo/ưo + w → ươ (e.g. uow, uwow → ươ; uowng → ương)
+        // uo/ưo + w → ươ; ua + w → ưa (must run before single-letter w rules)
         if (keyLower == 'w' && out.length >= 2) {
             val first = out[out.lastIndex - 1]
             val second = out.last()
             val firstBase = (stripTone[first] ?: first).lowercaseChar()
             val secondBase = (stripTone[second] ?: second).lowercaseChar()
-            if ((firstBase == 'u' || firstBase == 'ư') && secondBase == 'o') {
-                val firstTone = toneKeyByVowel[first]
-                val secondTone = toneKeyByVowel[second]
-                val keptTone = secondTone ?: firstTone
-                out.setCharAt(
-                    out.lastIndex - 1,
-                    if (first.isUpperCase()) 'Ư' else 'ư',
-                )
-                out.setCharAt(
-                    out.lastIndex,
-                    if (second.isUpperCase() || ch.isUpperCase()) 'Ơ' else 'ơ',
-                )
+            if ((firstBase == 'u' || firstBase == 'ư') && (secondBase == 'o' || secondBase == 'a')) {
+                val keptTone = toneKeyByVowel[second] ?: toneKeyByVowel[first]
+                out.setCharAt(out.lastIndex - 1, if (first.isUpperCase()) 'Ư' else 'ư')
+                if (secondBase == 'o') {
+                    out.setCharAt(
+                        out.lastIndex,
+                        if (second.isUpperCase() || ch.isUpperCase()) 'Ơ' else 'ơ',
+                    )
+                } else {
+                    // ưa = ư + a (horn only on u)
+                    out.setCharAt(
+                        out.lastIndex,
+                        if (second.isUpperCase() || ch.isUpperCase()) 'A' else 'a',
+                    )
+                }
                 if (keptTone != null) {
                     applyToneKey(out, keptTone)
                 }
@@ -155,7 +220,8 @@ object TelexEngine {
         }
         if (replacement == null) return false
         out.setCharAt(out.lastIndex, replacement)
-        if (lastTone != null && replacement.lowercaseChar() in "ăâêôơưđ") {
+        val markedBases = setOf('ă', 'â', 'ê', 'ô', 'ơ', 'ư', 'đ')
+        if (lastTone != null && replacement.lowercaseChar() in markedBases) {
             applyToneKey(out, lastTone)
         }
         return true

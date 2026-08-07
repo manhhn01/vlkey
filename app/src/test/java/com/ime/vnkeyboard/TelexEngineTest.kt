@@ -89,8 +89,29 @@ class TelexEngineTest {
 
     @Test
     fun toTelexRaw_round_trips_common_words() {
-        for (word in listOf("chà", "chào", "ươ", "ương", "ướng", "á", "đường")) {
+        for (word in listOf("chà", "chào", "ươ", "ương", "ướng", "á", "đường", "ưa", "mưa", "việt")) {
             assertEquals(word, TelexEngine.convert(TelexEngine.toTelexRaw(word)))
         }
+    }
+
+    @Test
+    fun ua_w_makes_ua_horn() {
+        assertEquals("ưa", TelexEngine.convert("uaw"))
+        assertEquals("mưa", TelexEngine.convert("muaw"))
+        assertEquals("mửa", TelexEngine.convert("muawr"))
+    }
+
+    @Test
+    fun tone_before_ie_digraph_still_makes_viet() {
+        assertEquals("việt", TelexEngine.convert("vijeet"))
+        assertEquals("việt", TelexEngine.convert("vieejt"))
+        assertEquals("việt", TelexEngine.convert("vietj"))
+    }
+
+    @Test
+    fun ie_ye_promotes_circumflex_before_final() {
+        assertEquals("tiếng", TelexEngine.convert("tiengs"))
+        assertEquals("kiệm", TelexEngine.convert("kiemj"))
+        assertEquals("uyên", TelexEngine.convert("uyen"))
     }
 }
