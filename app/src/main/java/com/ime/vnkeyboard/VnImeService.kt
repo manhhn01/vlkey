@@ -69,6 +69,15 @@ class VnImeService : InputMethodService() {
                 pipeline.clear()
                 return false
             }
+            is KeyAction.SwitchIme -> {
+                pipeline.clear()
+                suppressSelectionCount = 0
+                switchToNextInputMethod(false)
+                if (event.repeatCount == 0) {
+                    consumedKeyCodes.add(keyCode)
+                }
+                return true
+            }
             is KeyAction.PlatformKey -> {
                 pipeline.clear()
                 suppressSelectionCount = 0

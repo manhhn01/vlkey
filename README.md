@@ -39,5 +39,6 @@ Then: Settings → System → Keyboard → On-screen keyboard → Manage keyboar
 4. Type `f` again → `chào`, then Space → word ends
 5. Click mid-word / move cursor → next letters start fresh (no stuck accents)
 6. Ctrl+C / Ctrl+V still work in the editor
-7. Open Lark Web composer — repeat steps 2–6 (primary success target)
-8. Confirm soft keyboard area is blank (no key UI)
+7. Ctrl+Space switches to the next enabled keyboard/IME (no space inserted)
+8. Open Lark Web composer — repeat steps 2–7 (primary success target)
+9. Confirm soft keyboard area is blank (no key UI)

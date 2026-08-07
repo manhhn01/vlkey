@@ -29,6 +29,11 @@ class KeyClassifierTest {
     }
 
     @Test
+    fun ctrl_space_switches_ime() {
+        assertEquals(KeyAction.SwitchIme, KeyClassifier.classify(DOWN, 62, ' '.code, CTRL))
+    }
+
+    @Test
     fun punct_terminator() {
         assertEquals(KeyAction.Terminator('.'), KeyClassifier.classify(DOWN, 56, '.'.code, 0))
     }

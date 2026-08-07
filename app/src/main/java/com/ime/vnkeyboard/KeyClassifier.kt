@@ -6,6 +6,7 @@ sealed class KeyAction {
     data class Terminator(val char: Char) : KeyAction()
     data class PassThrough(val char: Char) : KeyAction()
     object Shortcut : KeyAction()
+    object SwitchIme : KeyAction()
     object PlatformKey : KeyAction()
     object Ignore : KeyAction()
 }
@@ -13,6 +14,7 @@ sealed class KeyAction {
 object KeyClassifier {
     private const val ACTION_DOWN = 0
     private const val KEYCODE_TAB = 61
+    private const val KEYCODE_SPACE = 62
     private const val KEYCODE_ENTER = 66
     private const val KEYCODE_DEL = 67
     private const val META_CTRL_ON = 0x1000
@@ -23,6 +25,8 @@ object KeyClassifier {
 
     fun classify(action: Int, keyCode: Int, unicodeChar: Int, metaState: Int): KeyAction {
         if (action != ACTION_DOWN) return KeyAction.Ignore
+        val ctrlHeld = metaState and META_CTRL_ON != 0
+        if (ctrlHeld && keyCode == KEYCODE_SPACE) return KeyAction.SwitchIme
         val shortcutMeta = META_CTRL_ON or META_ALT_ON or META_META_ON
         if (metaState and shortcutMeta != 0) return KeyAction.Shortcut
         if (keyCode == KEYCODE_DEL) return KeyAction.Backspace
