@@ -17,6 +17,10 @@ class WordBuffer {
         return true
     }
 
+    fun setRaw(value: String) {
+        raw = value
+    }
+
     fun clear() {
         raw = ""
         committedLength = 0

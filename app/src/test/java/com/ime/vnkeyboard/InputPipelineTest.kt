@@ -36,13 +36,25 @@ class InputPipelineTest {
     }
 
     @Test
-    fun backspace_rebuilds() {
+    fun backspace_deletes_whole_character_not_just_tone() {
         val (p, fake, buffer) = newPipeline()
         for (ch in "chaof") p.onLetter(fake, ch)
         fake.ops.clear()
         assertTrue(p.onBackspace(fake))
-        assertEquals("chao", buffer.raw)
-        assertEquals("commit:chao:1", fake.ops.last { it.startsWith("commit:") })
+        assertEquals("chà", TelexEngine.convert(buffer.raw))
+        assertEquals("commit:chà:1", fake.ops.last { it.startsWith("commit:") })
+        assertEquals(3, buffer.committedLength)
+    }
+
+    @Test
+    fun backspace_on_single_toned_char_clears_word() {
+        val (p, fake, buffer) = newPipeline()
+        for (ch in "as") p.onLetter(fake, ch)
+        fake.ops.clear()
+        assertTrue(p.onBackspace(fake))
+        assertTrue(buffer.isEmpty)
+        assertEquals(0, buffer.committedLength)
+        assertTrue(fake.ops.any { it == "del:1:0" })
     }
 
     @Test

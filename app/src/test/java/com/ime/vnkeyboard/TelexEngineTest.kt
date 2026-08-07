@@ -77,4 +77,20 @@ class TelexEngineTest {
         assertEquals("ngoài", TelexEngine.convert("ngoaif"))
         assertEquals("loại", TelexEngine.convert("loaji"))
     }
+
+    @Test
+    fun uow_and_uwow_make_uoro() {
+        assertEquals("ươ", TelexEngine.convert("uow"))
+        assertEquals("ươ", TelexEngine.convert("uwow"))
+        assertEquals("ương", TelexEngine.convert("uowng"))
+        assertEquals("ướng", TelexEngine.convert("uowngs"))
+        assertEquals("đường", TelexEngine.convert("dduowngf"))
+    }
+
+    @Test
+    fun toTelexRaw_round_trips_common_words() {
+        for (word in listOf("chà", "chào", "ươ", "ương", "ướng", "á", "đường")) {
+            assertEquals(word, TelexEngine.convert(TelexEngine.toTelexRaw(word)))
+        }
+    }
 }
