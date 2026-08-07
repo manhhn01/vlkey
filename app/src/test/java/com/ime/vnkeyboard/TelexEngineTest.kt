@@ -118,9 +118,13 @@ class TelexEngineTest {
     @Test
     fun ieu_yeu_promotes_before_glide_u() {
         assertEquals("liêu", TelexEngine.convert("lieu"))
-        assertEquals("liệu", TelexEngine.convert("lieur"))
-        assertEquals("liệu", TelexEngine.convert("lieeur"))
+        // hỏi = ể (U+1EC3); nặng = ệ (U+1EC7)
+        assertEquals("li\u1EC3u", TelexEngine.convert("lieur"))
+        assertEquals("li\u1EC3u", TelexEngine.convert("lieeur"))
+        assertEquals("li\u1EC7u", TelexEngine.convert("lieuj"))
         assertEquals("yêu", TelexEngine.convert("yeu"))
         assertEquals("yếu", TelexEngine.convert("yeus"))
+        // Extra e after tone used to yield lieụe when u took the tone
+        assertEquals("li\u1EC7ue", TelexEngine.convert("lieuje"))
     }
 }
