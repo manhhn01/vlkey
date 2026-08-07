@@ -114,4 +114,13 @@ class TelexEngineTest {
         assertEquals("kiệm", TelexEngine.convert("kiemj"))
         assertEquals("uyên", TelexEngine.convert("uyen"))
     }
+
+    @Test
+    fun ieu_yeu_promotes_before_glide_u() {
+        assertEquals("liêu", TelexEngine.convert("lieu"))
+        assertEquals("liệu", TelexEngine.convert("lieur"))
+        assertEquals("liệu", TelexEngine.convert("lieeur"))
+        assertEquals("yêu", TelexEngine.convert("yeu"))
+        assertEquals("yếu", TelexEngine.convert("yeus"))
+    }
 }

@@ -99,12 +99,13 @@ object TelexEngine {
         return base in baseVowels || stripTone.containsKey(ch)
     }
 
-    private val ieYeFinalSingles = setOf('c', 't', 'n', 'p', 'm')
+    // Finals after ie/ye that force e → ê (includes glide u for iêu/yêu).
+    private val ieYeFinalSingles = setOf('c', 't', 'n', 'p', 'm', 'u')
     private val ieYeFinalDigraphs = setOf("ch", "nh", "ng")
 
     /**
-     * Vietnamese rhyme rule: ie/ye + final (c/t/n/p/m/ch/nh/ng) ⇒ iê/yê.
-     * So `vietj` → `việt`, `tiengs` → `tiếng`.
+     * Vietnamese rhyme rule: ie/ye + final (c/t/n/p/m/u/ch/nh/ng) ⇒ iê/yê.
+     * So `vietj` → `việt`, `lieur` → `liệu`, `yeur` → `yếu`.
      */
     private fun promoteIeYeCircumflex(out: StringBuilder) {
         if (out.length < 3) return
