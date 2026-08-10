@@ -11,13 +11,15 @@ class InputPipeline(
     }
 
     fun onBackspace(committer: TextCommitter?): Boolean {
+        // Empty word buffer: do not handle — VnImeService returns false so the platform
+        // processes KEYCODE_DEL. deleteSurroundingText(1) is flaky in many WebViews.
         if (buffer.isEmpty) {
-            return commitManager.deleteOne(committer)
+            return false
         }
         val converted = TelexEngine.convert(buffer.raw)
         if (converted.isEmpty()) {
             buffer.clear()
-            return commitManager.deleteOne(committer)
+            return false
         }
         // Delete one display character (e.g. á → gone), not just the tone key (á → a).
         val target = converted.dropLast(1)

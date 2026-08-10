@@ -60,4 +60,24 @@ class KeyClassifierTest {
     fun action_up_ignored() {
         assertTrue(KeyClassifier.classify(1, 29, 'a'.code, 0) is KeyAction.Ignore)
     }
+
+    @Test
+    fun navigation_keys() {
+        assertEquals(KeyAction.Navigate, KeyClassifier.classify(DOWN, 19, 0, 0)) // DPAD_UP
+        assertEquals(KeyAction.Navigate, KeyClassifier.classify(DOWN, 20, 0, 0)) // DOWN
+        assertEquals(KeyAction.Navigate, KeyClassifier.classify(DOWN, 21, 0, 0)) // LEFT
+        assertEquals(KeyAction.Navigate, KeyClassifier.classify(DOWN, 22, 0, 0)) // RIGHT
+        assertEquals(KeyAction.Navigate, KeyClassifier.classify(DOWN, 92, 0, 0)) // PAGE_UP
+        assertEquals(KeyAction.Navigate, KeyClassifier.classify(DOWN, 93, 0, 0)) // PAGE_DOWN
+        assertEquals(KeyAction.Navigate, KeyClassifier.classify(DOWN, 122, 0, 0)) // MOVE_HOME
+        assertEquals(KeyAction.Navigate, KeyClassifier.classify(DOWN, 123, 0, 0)) // MOVE_END
+        assertEquals(KeyAction.Navigate, KeyClassifier.classify(DOWN, 111, 0, 0)) // ESCAPE
+        assertEquals(KeyAction.Navigate, KeyClassifier.classify(DOWN, 112, 0, 0)) // FORWARD_DEL
+    }
+
+    @Test
+    fun unicode_zero_without_navigate_keycode_is_ignore() {
+        // Unknown key with no unicode — not a listed navigation key.
+        assertEquals(KeyAction.Ignore, KeyClassifier.classify(DOWN, 0, 0, 0))
+    }
 }

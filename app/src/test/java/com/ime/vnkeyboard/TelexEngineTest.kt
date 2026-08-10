@@ -16,6 +16,26 @@ class TelexEngineTest {
     }
 
     @Test
+    fun repeating_diacritic_key_undoes_to_literal() {
+        // Bamboo Telex one-shot escape: undo + append; further keys stay literal (no toggle).
+        assertEquals("uw", TelexEngine.convert("uww"))
+        assertEquals("uww", TelexEngine.convert("uwww"))
+        assertEquals("ow", TelexEngine.convert("oww"))
+        assertEquals("oww", TelexEngine.convert("owww"))
+        assertEquals("aw", TelexEngine.convert("aww"))
+        assertEquals("aa", TelexEngine.convert("aaa"))
+        assertEquals("aâ", TelexEngine.convert("aaaa"))
+        assertEquals("ee", TelexEngine.convert("eee"))
+        assertEquals("oo", TelexEngine.convert("ooo"))
+        assertEquals("dd", TelexEngine.convert("ddd"))
+        assertEquals("uaw", TelexEngine.convert("uaww"))
+        assertEquals("uow", TelexEngine.convert("uowww"))
+        // Keep tone when undoing horn/circumflex.
+        assertEquals("úw", TelexEngine.convert("uwsw"))
+        assertEquals("áa", TelexEngine.convert("aasa"))
+    }
+
+    @Test
     fun chao_huyen() {
         assertEquals("chào", TelexEngine.convert("chaof"))
     }
@@ -32,6 +52,15 @@ class TelexEngineTest {
     @Test
     fun remove_tone_with_z() {
         assertEquals("a", TelexEngine.convert("asz"))
+    }
+
+    @Test
+    fun repeating_tone_key_undoes_to_literal() {
+        // Bamboo Telex: same tone key → undo + append (one-shot, not toggle).
+        assertEquals("as", TelexEngine.convert("ass"))
+        assertEquals("ass", TelexEngine.convert("asss"))
+        assertEquals("as", TelexEngine.convert("afss"))
+        assertEquals("bas", TelexEngine.convert("bass"))
     }
 
     @Test
@@ -79,9 +108,14 @@ class TelexEngineTest {
     }
 
     @Test
-    fun uow_and_uwow_make_uoro() {
-        assertEquals("ươ", TelexEngine.convert("uow"))
+    fun uow_bamboo_two_step() {
+        // Bamboo: first w horns o only; second w completes ư; third undoes.
+        assertEquals("uơ", TelexEngine.convert("uow"))
+        assertEquals("ươ", TelexEngine.convert("uoww"))
+        assertEquals("uow", TelexEngine.convert("uowww"))
         assertEquals("ươ", TelexEngine.convert("uwow"))
+        assertEquals("uow", TelexEngine.convert("uwoww"))
+        // SuperKey-style: uơ + final → ươ…
         assertEquals("ương", TelexEngine.convert("uowng"))
         assertEquals("ướng", TelexEngine.convert("uowngs"))
         assertEquals("đường", TelexEngine.convert("dduowngf"))
@@ -99,6 +133,24 @@ class TelexEngineTest {
         assertEquals("ưa", TelexEngine.convert("uaw"))
         assertEquals("mưa", TelexEngine.convert("muaw"))
         assertEquals("mửa", TelexEngine.convert("muawr"))
+    }
+
+    @Test
+    fun mark_family_switching() {
+        // Bamboo: switch within a/â/ă and o/ô/ơ families.
+        assertEquals("ă", TelexEngine.convert("aaw"))
+        assertEquals("ơ", TelexEngine.convert("oow"))
+        assertEquals("â", TelexEngine.convert("awa"))
+        assertEquals("ô", TelexEngine.convert("owo"))
+        assertEquals("ắ", TelexEngine.convert("aasw"))
+        assertEquals("mâ", TelexEngine.convert("mawa"))
+        assertEquals("mô", TelexEngine.convert("mowo"))
+    }
+
+    @Test
+    fun uoro_plus_o_makes_uo_circumflex() {
+        assertEquals("uô", TelexEngine.convert("uowo"))
+        assertEquals("uô", TelexEngine.convert("uowwo"))
     }
 
     @Test

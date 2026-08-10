@@ -1,6 +1,7 @@
 package com.ime.vnkeyboard
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -20,7 +21,7 @@ class InputPipelineTest {
         assertEquals("chaof", buffer.raw)
         assertEquals(
             "chào",
-            fake.ops.last { it.startsWith("commit:") }.removePrefix("commit:").substringBefore(":"),
+            fake.ops.last { it.startsWith("replace:") }.substringAfterLast(":"),
         )
         assertEquals(4, buffer.committedLength)
     }
@@ -42,7 +43,7 @@ class InputPipelineTest {
         fake.ops.clear()
         assertTrue(p.onBackspace(fake))
         assertEquals("chà", TelexEngine.convert(buffer.raw))
-        assertEquals("commit:chà:1", fake.ops.last { it.startsWith("commit:") })
+        assertEquals("replace:4:chà", fake.ops.last { it.startsWith("replace:") })
         assertEquals(3, buffer.committedLength)
     }
 
@@ -54,13 +55,14 @@ class InputPipelineTest {
         assertTrue(p.onBackspace(fake))
         assertTrue(buffer.isEmpty)
         assertEquals(0, buffer.committedLength)
-        assertTrue(fake.ops.any { it == "del:1:0" })
+        assertTrue(fake.ops.any { it == "replace:1:" })
     }
 
     @Test
-    fun backspace_empty_deletes_one() {
+    fun backspace_empty_is_not_handled_by_pipeline() {
+        // Let the platform deliver KEYCODE_DEL — deleteSurroundingText is unreliable in WebViews.
         val (p, fake, _) = newPipeline()
-        assertTrue(p.onBackspace(fake))
-        assertEquals(listOf("begin", "del:1:0", "end"), fake.ops)
+        assertFalse(p.onBackspace(fake))
+        assertTrue(fake.ops.isEmpty())
     }
 }

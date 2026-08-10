@@ -9,12 +9,8 @@ class CommitManager(private val buffer: WordBuffer) {
         committer.beginBatchEdit()
         return try {
             val before = buffer.committedLength
-            if (before > 0 && !committer.deleteSurroundingText(before, 0)) {
-                buffer.clear()
-                return false
-            }
-            if (converted.isNotEmpty()) {
-                if (!committer.commitText(converted, 1)) {
+            if (before > 0 || converted.isNotEmpty()) {
+                if (!committer.replaceBeforeCursor(before, converted)) {
                     buffer.clear()
                     return false
                 }
@@ -51,7 +47,7 @@ class CommitManager(private val buffer: WordBuffer) {
         }
         committer.beginBatchEdit()
         return try {
-            if (!committer.deleteSurroundingText(1, 0)) {
+            if (!committer.replaceBeforeCursor(1, "")) {
                 buffer.clear()
                 return false
             }

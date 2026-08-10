@@ -7,7 +7,7 @@ import org.junit.Test
 
 class FakeCommitter : TextCommitter {
     val ops = mutableListOf<String>()
-    var failDelete = false
+    var failReplace = false
     var failCommit = false
 
     override fun beginBatchEdit(): Boolean {
@@ -22,25 +22,30 @@ class FakeCommitter : TextCommitter {
 
     override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
         ops += "del:$beforeLength:$afterLength"
-        return !failDelete
+        return !failReplace
     }
 
     override fun commitText(text: String, newCursorPosition: Int): Boolean {
         ops += "commit:$text:$newCursorPosition"
         return !failCommit
     }
+
+    override fun replaceBeforeCursor(beforeLength: Int, text: String): Boolean {
+        ops += "replace:$beforeLength:$text"
+        return !failReplace && !(text.isNotEmpty() && failCommit)
+    }
 }
 
 class CommitManagerTest {
     @Test
-    fun replaceWord_deletes_then_commits() {
+    fun replaceWord_uses_replaceBeforeCursor() {
         val buffer = WordBuffer()
         buffer.append('a')
         buffer.committedLength = 1
         val fake = FakeCommitter()
         val cm = CommitManager(buffer)
         assertTrue(cm.replaceWord(fake, "á"))
-        assertEquals(listOf("begin", "del:1:0", "commit:á:1", "end"), fake.ops)
+        assertEquals(listOf("begin", "replace:1:á", "end"), fake.ops)
         assertEquals(1, buffer.committedLength)
     }
 
@@ -56,14 +61,14 @@ class CommitManagerTest {
     }
 
     @Test
-    fun failed_delete_clears_buffer() {
+    fun failed_replace_clears_buffer() {
         val buffer = WordBuffer()
         buffer.append('a')
         buffer.committedLength = 1
-        val fake = FakeCommitter().apply { failDelete = true }
+        val fake = FakeCommitter().apply { failReplace = true }
         val cm = CommitManager(buffer)
         assertFalse(cm.replaceWord(fake, "á"))
-        assertEquals(listOf("begin", "del:1:0", "end"), fake.ops)
+        assertEquals(listOf("begin", "replace:1:á", "end"), fake.ops)
         assertTrue(buffer.isEmpty)
     }
 
@@ -80,14 +85,14 @@ class CommitManagerTest {
     }
 
     @Test
-    fun replaceWord_empty_only_deletes() {
+    fun replaceWord_empty_replaces_with_empty() {
         val buffer = WordBuffer()
         buffer.append('a')
         buffer.committedLength = 1
         val fake = FakeCommitter()
         val cm = CommitManager(buffer)
         assertTrue(cm.replaceWord(fake, ""))
-        assertEquals(listOf("begin", "del:1:0", "end"), fake.ops)
+        assertEquals(listOf("begin", "replace:1:", "end"), fake.ops)
         assertEquals(0, buffer.committedLength)
     }
 
@@ -97,6 +102,6 @@ class CommitManagerTest {
         val fake = FakeCommitter()
         val cm = CommitManager(buffer)
         assertTrue(cm.deleteOne(fake))
-        assertEquals(listOf("begin", "del:1:0", "end"), fake.ops)
+        assertEquals(listOf("begin", "replace:1:", "end"), fake.ops)
     }
 }

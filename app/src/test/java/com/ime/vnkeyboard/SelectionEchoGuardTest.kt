@@ -7,25 +7,41 @@ import org.junit.Test
 
 class SelectionEchoGuardTest {
     @Test
-    fun two_self_edits_then_two_selection_updates_do_not_clear() {
-        var count = SelectionEchoGuard.onSelfEdit(SelectionEchoGuard.onSelfEdit(0))
+    fun matching_expected_cursor_does_not_clear() {
+        var count = SelectionEchoGuard.onSelfEdit(0)
+        assertEquals(SelectionEchoGuard.SELF_EDIT_CREDIT, count)
 
-        val first = SelectionEchoGuard.onSelection(count)
-        count = first.first
-        val second = SelectionEchoGuard.onSelection(count)
-
-        assertEquals(1, first.first)
-        assertFalse(first.second)
-        assertEquals(0, second.first)
-        assertFalse(second.second)
+        val step = SelectionEchoGuard.onSelection(
+            count,
+            isCollapsed = true,
+            matchesExpectedCursor = true,
+        )
+        assertEquals(SelectionEchoGuard.SELF_EDIT_CREDIT - 1, step.first)
+        assertFalse(step.second)
     }
 
     @Test
-    fun selection_update_with_no_self_edit_clears() {
-        val result = SelectionEchoGuard.onSelection(0)
+    fun mismatched_caret_clears_even_with_credit() {
+        val count = SelectionEchoGuard.onSelfEdit(0)
+        val step = SelectionEchoGuard.onSelection(
+            count,
+            isCollapsed = true,
+            matchesExpectedCursor = false,
+        )
+        assertEquals(0, step.first)
+        assertTrue(step.second)
+    }
 
-        assertEquals(0, result.first)
-        assertTrue(result.second)
+    @Test
+    fun expanded_selection_always_clears() {
+        val count = SelectionEchoGuard.onSelfEdit(0)
+        val step = SelectionEchoGuard.onSelection(
+            count,
+            isCollapsed = false,
+            matchesExpectedCursor = true,
+        )
+        assertEquals(0, step.first)
+        assertTrue(step.second)
     }
 
     @Test
@@ -34,15 +50,19 @@ class SelectionEchoGuardTest {
         repeat(20) {
             count = SelectionEchoGuard.onSelfEdit(count)
         }
-
-        assertEquals(8, count)
+        assertEquals(SelectionEchoGuard.MAX_PENDING_ECHOES, count)
     }
 
     @Test
-    fun expanded_selection_always_clears_pending_echoes() {
-        val result = SelectionEchoGuard.onSelection(3, isCollapsed = false)
-
-        assertEquals(0, result.first)
-        assertTrue(result.second)
+    fun matching_echoes_drain_credit_then_stay_without_clear() {
+        var count = SelectionEchoGuard.onSelfEdit(0)
+        repeat(SelectionEchoGuard.SELF_EDIT_CREDIT) {
+            val step = SelectionEchoGuard.onSelection(count, true, matchesExpectedCursor = true)
+            count = step.first
+            assertFalse(step.second)
+        }
+        val after = SelectionEchoGuard.onSelection(0, true, matchesExpectedCursor = true)
+        assertEquals(0, after.first)
+        assertFalse(after.second)
     }
 }

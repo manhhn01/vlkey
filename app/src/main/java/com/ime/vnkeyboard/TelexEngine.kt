@@ -82,6 +82,7 @@ object TelexEngine {
             if (!applyToneKey(out, lower)) {
                 out.append(ch)
             }
+            promoteUowTail(out)
             promoteIeYeCircumflex(out)
             return
         }
@@ -91,6 +92,7 @@ object TelexEngine {
                 repositionExistingTone(out)
             }
         }
+        promoteUowTail(out)
         promoteIeYeCircumflex(out)
     }
 
@@ -176,27 +178,80 @@ object TelexEngine {
         if (out.isEmpty()) return false
         val keyLower = ch.lowercaseChar()
 
-        // uo/ưo + w → ươ; ua + w → ưa (must run before single-letter w rules)
+        // ươ/ưo/uơ + o → uô (Bamboo regUhO)
+        if (keyLower == 'o' && out.length >= 2) {
+            val first = out[out.lastIndex - 1]
+            val second = out.last()
+            val firstBase = (stripTone[first] ?: first).lowercaseChar()
+            val secondBase = (stripTone[second] ?: second).lowercaseChar()
+            val keptTone = toneKeyByVowel[second] ?: toneKeyByVowel[first]
+            val oUpper = second.isUpperCase() || ch.isUpperCase()
+            val uUpper = first.isUpperCase()
+            if (firstBase == 'ư' && (secondBase == 'ơ' || secondBase == 'o')) {
+                out.setCharAt(out.lastIndex - 1, if (uUpper) 'U' else 'u')
+                out.setCharAt(out.lastIndex, withTone(if (oUpper) 'Ô' else 'ô', keptTone))
+                return true
+            }
+            if (firstBase == 'u' && secondBase == 'ơ') {
+                out.setCharAt(out.lastIndex, withTone(if (oUpper) 'Ô' else 'ô', keptTone))
+                return true
+            }
+        }
+
+        // Bamboo w digraphs (before single-letter w rules):
+        // uow→uơ, uoww→ươ, uowww→uow; uwow→ươ; uaw→ưa / uaww→uaw
         if (keyLower == 'w' && out.length >= 2) {
             val first = out[out.lastIndex - 1]
             val second = out.last()
             val firstBase = (stripTone[first] ?: first).lowercaseChar()
             val secondBase = (stripTone[second] ?: second).lowercaseChar()
-            if ((firstBase == 'u' || firstBase == 'ư') && (secondBase == 'o' || secondBase == 'a')) {
-                val keptTone = toneKeyByVowel[second] ?: toneKeyByVowel[first]
-                out.setCharAt(out.lastIndex - 1, if (first.isUpperCase()) 'Ư' else 'ư')
-                if (secondBase == 'o') {
-                    out.setCharAt(
-                        out.lastIndex,
-                        if (second.isUpperCase() || ch.isUpperCase()) 'Ơ' else 'ơ',
-                    )
-                } else {
-                    // ưa = ư + a (horn only on u)
-                    out.setCharAt(
-                        out.lastIndex,
-                        if (second.isUpperCase() || ch.isUpperCase()) 'A' else 'a',
-                    )
+            val firstTone = toneKeyByVowel[first]
+            val secondTone = toneKeyByVowel[second]
+
+            // ươ + w → undo to uow; ưa + w → uaw
+            if (firstBase == 'ư' && (secondBase == 'ơ' || secondBase == 'a')) {
+                out.setCharAt(out.lastIndex - 1, restorePlainKeepingTone(first, 'u'))
+                if (secondBase == 'ơ') {
+                    out.setCharAt(out.lastIndex, restorePlainKeepingTone(second, 'o'))
                 }
+                out.append(ch)
+                return true
+            }
+            // uơ + w → complete ươ
+            if (firstBase == 'u' && secondBase == 'ơ') {
+                out.setCharAt(
+                    out.lastIndex - 1,
+                    withTone(if (first.isUpperCase()) 'Ư' else 'ư', firstTone),
+                )
+                return true
+            }
+            // ưo + w → ươ (uwow)
+            if (firstBase == 'ư' && secondBase == 'o') {
+                out.setCharAt(
+                    out.lastIndex,
+                    withTone(
+                        if (second.isUpperCase() || ch.isUpperCase()) 'Ơ' else 'ơ',
+                        secondTone,
+                    ),
+                )
+                return true
+            }
+            // uo + w → uơ (horn on o only; tone prefers o, else moves from u)
+            if (firstBase == 'u' && secondBase == 'o') {
+                val keptTone = secondTone ?: firstTone
+                val uUpper = first.isUpperCase()
+                val oUpper = second.isUpperCase() || ch.isUpperCase()
+                out.setCharAt(out.lastIndex - 1, if (uUpper) 'U' else 'u')
+                out.setCharAt(out.lastIndex, withTone(if (oUpper) 'Ơ' else 'ơ', keptTone))
+                return true
+            }
+            // ua + w → ưa
+            if (firstBase == 'u' && secondBase == 'a') {
+                val keptTone = secondTone ?: firstTone
+                val uUpper = first.isUpperCase()
+                val aUpper = second.isUpperCase() || ch.isUpperCase()
+                out.setCharAt(out.lastIndex - 1, if (uUpper) 'Ư' else 'ư')
+                out.setCharAt(out.lastIndex, if (aUpper) 'A' else 'a')
                 if (keptTone != null) {
                     applyToneKey(out, keptTone)
                 }
@@ -205,9 +260,31 @@ object TelexEngine {
         }
 
         val last = out.last()
-        val lastLower = (stripTone[last] ?: last).lowercaseChar()
+        val lastBase = stripTone[last] ?: last
+        val lastLower = lastBase.lowercaseChar()
         val upper = ch.isUpperCase() || last.isUpperCase()
         val lastTone = toneKeyByVowel[last]
+
+        // Mark-family switch: â↔ă via w/a, ô↔ơ via w/o (before undo/apply).
+        val switched: Char? = when {
+            keyLower == 'w' && lastLower == 'â' -> if (upper) 'Ă' else 'ă'
+            keyLower == 'w' && lastLower == 'ô' -> if (upper) 'Ơ' else 'ơ'
+            keyLower == 'a' && lastLower == 'ă' -> if (upper) 'Â' else 'â'
+            keyLower == 'o' && lastLower == 'ơ' -> if (upper) 'Ô' else 'ô'
+            else -> null
+        }
+        if (switched != null) {
+            out.setCharAt(out.lastIndex, withTone(switched, lastTone))
+            return true
+        }
+
+        // Same diacritic key again → undo mark and append literal key (ư+w → uw).
+        val undonePlain = undoDiacriticPlain(lastLower, keyLower)
+        if (undonePlain != null) {
+            out.setCharAt(out.lastIndex, restorePlainKeepingTone(last, undonePlain))
+            out.append(ch)
+            return true
+        }
 
         val replacement: Char? = when {
             lastLower == 'd' && keyLower == 'd' -> if (upper) 'Đ' else 'đ'
@@ -228,12 +305,65 @@ object TelexEngine {
         return true
     }
 
+    /** Plain vowel/consonant after undoing the mark created by [keyLower], or null if not undoable. */
+    private fun undoDiacriticPlain(markedLower: Char, keyLower: Char): Char? = when {
+        keyLower == 'w' && markedLower == 'ư' -> 'u'
+        keyLower == 'w' && markedLower == 'ơ' -> 'o'
+        keyLower == 'w' && markedLower == 'ă' -> 'a'
+        keyLower == 'a' && markedLower == 'â' -> 'a'
+        keyLower == 'e' && markedLower == 'ê' -> 'e'
+        keyLower == 'o' && markedLower == 'ô' -> 'o'
+        keyLower == 'd' && markedLower == 'đ' -> 'd'
+        else -> null
+    }
+
+    /** Drop horn/circumflex/breve from [current], keep its tone and case, using [plainLower]. */
+    private fun restorePlainKeepingTone(current: Char, plainLower: Char): Char {
+        val tone = toneKeyByVowel[current]
+        val upper = current.isUpperCase() || (stripTone[current] ?: current).isUpperCase()
+        return withTone(if (upper) plainLower.uppercaseChar() else plainLower, tone)
+    }
+
+    private fun withTone(baseChar: Char, tone: Char?): Char {
+        if (tone == null) return baseChar
+        val lower = baseChar.lowercaseChar()
+        val toned = toneMap[tone]?.get(lower) ?: return baseChar
+        return if (baseChar.isUpperCase()) toned.uppercaseChar() else toned
+    }
+
+    /**
+     * Bamboo SuperKey shortcut: `uơ`/`ưo` + following letter(s) → `ươ`…
+     * So `uowng` → `ương` even though first `w` only made `uơ`.
+     */
+    private fun promoteUowTail(out: StringBuilder) {
+        if (out.length < 3) return
+        for (i in 0 until out.length - 2) {
+            val a = (stripTone[out[i]] ?: out[i]).lowercaseChar()
+            val b = (stripTone[out[i + 1]] ?: out[i + 1]).lowercaseChar()
+            if (!((a == 'u' && b == 'ơ') || (a == 'ư' && b == 'o'))) continue
+            var hasTail = false
+            for (j in i + 2 until out.length) {
+                if ((stripTone[out[j]] ?: out[j]).isLetter()) {
+                    hasTail = true
+                    break
+                }
+            }
+            if (!hasTail) continue
+            val t0 = toneKeyByVowel[out[i]]
+            val t1 = toneKeyByVowel[out[i + 1]]
+            val uUpper = out[i].isUpperCase() || (stripTone[out[i]] ?: out[i]).isUpperCase()
+            val oUpper = out[i + 1].isUpperCase() || (stripTone[out[i + 1]] ?: out[i + 1]).isUpperCase()
+            out.setCharAt(i, withTone(if (uUpper) 'Ư' else 'ư', t0))
+            out.setCharAt(i + 1, withTone(if (oUpper) 'Ơ' else 'ơ', t1))
+        }
+    }
+
     private fun applyToneKey(out: StringBuilder, toneKey: Char): Boolean {
-        val idx = findToneTargetIndex(out) ?: return false
-        val current = out[idx]
-        val base = stripTone[current] ?: current
-        val baseLower = base.lowercaseChar()
         if (toneKey == 'z') {
+            val idx = findToneTargetIndex(out) ?: return false
+            val current = out[idx]
+            val base = stripTone[current] ?: current
+            val baseLower = base.lowercaseChar()
             if (base == current && stripTone[current] == null && current.lowercaseChar() in baseVowels.map { it.lowercaseChar() }) {
                 // already untoned vowel — z consumes
                 return true
@@ -241,6 +371,20 @@ object TelexEngine {
             if (stripTone[current] == null && current.lowercaseChar() !in "aăâeêioôơuưy") return false
             out.setCharAt(idx, if (current.isUpperCase()) baseLower.uppercaseChar() else baseLower)
             return true
+        }
+        // Literal tone-key residue (e.g. ass→as): further same key only appends (asss→ass).
+        if (out.isNotEmpty() && out.last().lowercaseChar() == toneKey) {
+            return false
+        }
+        val idx = findToneTargetIndex(out) ?: return false
+        val current = out[idx]
+        val base = stripTone[current] ?: current
+        val baseLower = base.lowercaseChar()
+        // Same tone already present → strip and append key (Bamboo one-shot undo).
+        if (toneKeyByVowel[current] == toneKey) {
+            val upper = current.isUpperCase() || base.isUpperCase()
+            out.setCharAt(idx, if (upper) baseLower.uppercaseChar() else baseLower)
+            return false
         }
         val tonedLower = toneMap[toneKey]?.get(baseLower) ?: return false
         out.setCharAt(idx, if (current.isUpperCase() || base.isUpperCase()) tonedLower.uppercaseChar() else tonedLower)
